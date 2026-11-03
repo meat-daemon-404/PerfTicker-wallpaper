@@ -1,4 +1,4 @@
-﻿# 性能行情终端 · PerfTicker
+# 性能行情终端 · PerfTicker
 
 > 把 Windows 任务管理器做成**炒股软件行情终端**：CPU / GPU 的频率、占用率、显存、温度、功耗……
 > 每一项系统指标都是一只「个股」，实时 K 线、五档盘口、逐笔成交、自选行情一应俱全。
@@ -285,3 +285,18 @@ PerfTicker/
 | 开源协议 | [GPL-3.0](LICENSE) |
 
 本项目以 GNU General Public License v3.0 开源：可自由使用、修改、分发，衍生作品需同样以 GPL-3.0 开源并保留版权声明。
+
+---
+
+## 十五、壁纸版（Wallpaper Engine）
+
+把 PerfTicker 做成动态壁纸：**壁纸只读展示 + 原生面板操作台**，功能面完整保留在原生程序，壁纸负责 7×24 可视化。
+
+- **启动数据源**：`PerfTicker.exe --sensor`（无头采样 + 托盘常驻），或直接打开主程序（内置数据桥）。
+  数据桥仅监听 `127.0.0.1:51789`（被占用自动顺延），实际端口见 `%LOCALAPPDATA%\PerfTicker\bridge.json`。
+- **传输**：优先 **WebSocket（`/ws`）** 推送，连上即发 hello、之后每秒推 tick；同时保留 HTTP 接口（`/api/*`）作兼容与回退，壁纸端自动选择。
+- **导入壁纸**：Wallpaper Engine →「创建壁纸」→ **Web** 类型 → 指向 `wallpaper/` 目录。
+- **交互**：壁纸内不做控件；按全局热键 `Ctrl+Alt+P` 随时唤出原生主面板。
+- **离线兜底**：未连上数据桥时壁纸自动进入「离线演示」，桌面不会空白。
+
+详见 [docs/WALLPAPER-ARCHITECTURE.md](docs/WALLPAPER-ARCHITECTURE.md)（含原方案缺陷复盘）与 [wallpaper/README.md](wallpaper/README.md)。

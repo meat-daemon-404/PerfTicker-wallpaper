@@ -1,0 +1,20 @@
+{
+  "contentrating": "Everyone",
+  "description": "PerfTicker 行情壁纸：把「任务管理器做成 A 股行情终端」的 PerfTicker 变成动态壁纸。连接本地 PerfTicker 数据桥后，实时展示 CPU/GPU 频率、负载、内存、K 线、进程盘口、逐笔事件与营收中心；未连接时自动进入离线演示。",
+  "file": "index.html",
+  "preview": "preview.png",
+  "tags": ["Technology"],
+  "title": "PerfTicker 行情壁纸",
+  "type": "web",
+  "version": 1,
+  "general": {
+    "properties": {
+      "schemecolor": {
+        "order": 0,
+        "text": "ui_browse_properties_scheme_color",
+        "type": "color",
+        "value": "0.030 0.040 0.050"
+      }
+    }
+  }
+}

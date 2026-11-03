@@ -1,4 +1,4 @@
-﻿using System.Drawing.Drawing2D;
+using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 
 namespace PerfTicker;
@@ -108,6 +108,9 @@ internal sealed class AppForm : Form
 
     private uint _wakeMsg;
     private bool _hiddenMode;
+    private BridgeServer _bridge;
+    private const int HotkeyId = 0x5054;   // Ctrl+Alt+P 唤醒主面板
+    private const int WM_HOTKEY = 0x0312;
 
     private const int WM_NCHITTEST = 0x0084;
     private const int WM_MOUSEACTIVATE = 0x0021;
@@ -150,6 +153,9 @@ internal sealed class AppForm : Form
             int corner = 2;
             Native.DwmSetWindowAttribute(Handle, 33, ref corner, sizeof(int));
         }
+        catch { }
+        // 全局热键：Ctrl+Alt+P 从壁纸/任意前台唤出主面板（壁纸只读，交互回到原生窗口）
+        try { Native.RegisterHotKey(Handle, HotkeyId, Native.MOD_CONTROL | Native.MOD_ALT | Native.MOD_NOREPEAT, (uint)Keys.P); }
         catch { }
     }
 
@@ -216,6 +222,7 @@ internal sealed class AppForm : Form
         if (_settings.Gadget) ShowGadget();
 
         InitTray();
+        StartBridge();
         if (!string.IsNullOrEmpty(cfgWarning)) AddTape("配置提示 · " + cfgWarning, Theme.Warn);
         _timer = new System.Windows.Forms.Timer { Interval = 33 };
         _timer.Tick += OnUiTick;
@@ -237,6 +244,8 @@ internal sealed class AppForm : Form
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         SaveSettings();
+        try { Native.UnregisterHotKey(Handle, HotkeyId); } catch { }
+        try { _bridge?.Stop(); } catch { }
         try { if (_notify != null) { _notify.Visible = false; _notify.Dispose(); } } catch { }
         _timer?.Stop();
         _timer?.Dispose();
@@ -335,6 +344,33 @@ internal sealed class AppForm : Form
         AddTape(_settings.AutoStart ? "已设置开机自启动" : "已取消开机自启动", Theme.Gold);
         Invalidate();
         SaveSettings();
+    }
+
+    // ── 壁纸数据桥 ─────────────────────────────────────────
+    private void StartBridge()
+    {
+        try
+        {
+            _bridge = BridgeServer.ForForm(this);
+            _bridge.Start();
+        }
+        catch (Exception ex) { Diag.Error("BRIDGE", ex); }
+    }
+
+    /// <summary>壁纸/外部发来的命令（回投 UI 线程执行）。只允许 UI 状态类命令，不含结束进程。</summary>
+    public void ApplyBridgeCommand(string cmd, string arg)
+    {
+        switch ((cmd ?? "").ToLowerInvariant())
+        {
+            case "pause": TogglePause(); break;
+            case "color": ToggleColor(); break;
+            case "select": if (!string.IsNullOrEmpty(arg)) SelectMetric(arg); break;
+            case "period": if (long.TryParse(arg, out long p)) SetChartMode(p); break;
+            case "interval": if (int.TryParse(arg, out int iv)) SetInterval(Math.Clamp(iv, 250, 20000)); break;
+            case "economy": ToggleEconomy(); break;
+            case "procsort": if (int.TryParse(arg, out int ps)) SetProcSort(ps); break;
+            case "show": RestoreFromTray(); break;
+        }
     }
 
     // ── 托盘 ───────────────────────────────────────────────
@@ -1283,6 +1319,12 @@ internal sealed class AppForm : Form
     protected override void WndProc(ref Message m)
     {
         if (_wakeMsg != 0 && m.Msg == (int)_wakeMsg)
+        {
+            RestoreFromTray();
+            return;
+        }
+
+        if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HotkeyId)
         {
             RestoreFromTray();
             return;
